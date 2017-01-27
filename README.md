@@ -1,9 +1,9 @@
 # RespawnClone
-
+#><hr>
 # Table of Contents
 
 * [Team Members](#team-members)
-*[Project Description](#project-description)
+* [Project Description](#project-description)
 
 # <a name="team-members"></a>Team Members
 * "J. Jesus. P. Aguinaga" <admin@listforks.com>
