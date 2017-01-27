@@ -29,6 +29,7 @@ function SectorTemplate.generate(player, seed, x, y)
 
     local faction = Galaxy():getLocalFaction(x, y) or Galaxy():getNearestFaction(x, y)
     local otherFaction = Galaxy():getNearestFaction(x + math.random(-15, 15), y + math.random(-15, 15))
+    local federationFaction = Galaxy():findFaction(Server():getValue("federation"))
 
     if faction:getRelations(otherFaction.index) < -20000 then
         otherFaction = nil
@@ -129,7 +130,7 @@ function SectorTemplate.generate(player, seed, x, y)
         end
     end
 
-    generator:createStation(faction, "data/scripts/mods/entity/merchants/cloneBank.lua")
+    generator:createStation(federationFaction, "data/scripts/mods/entity/merchants/cloneBank.lua")
 
     if SectorTemplate.gates(x, y) then generator:createGates() end
 

@@ -21,6 +21,8 @@ require ("utility")
 require ("faction")
 require ("randomext")
 Dialog = require("dialogutility")
+
+local balanceFactors = {}
 -- if this function returns true the button for the script in the interaction window will be clickable.
 -- If this function returns false, it can return an error message as well, which will explain why the interaction doesn't work.
 function interactionPossible(playerIndex, option)
@@ -56,17 +58,33 @@ end
 -- this function gets called on creation of the entity the script is attached to, on client and server
 function initialize()
     local station = Entity()
-    print("ayyy initialize")
+    local x
+    local y
+    x, y = Sector():getCoordinates()
+
+    -- We wouldn't want relationship threshold to have a cubic rise, so replace with linear rise 
+    -- snippet from the Balancing_GetSectorRichnessFactor script function
+    local coords = vec2(x, y)
+    local dist = length(coords)
+    local maxDist = Balancing_GetDimensions() / 2
+    if dist > maxDist then dist = maxDist end
+
+    local linFactor = 1.0 - (dist / maxDist)
+    local richness = Balancing_GetSectorRichnessFactor(x,y)
+
+    setPrice(richness)
+    setRelationThreshold(linFactor)
+
     -- It is common use to have the first script that is added to a station and that sets a name to set the title of the station.
     -- In order for this to work, each script that gives a title has to check if there is not yet a title
     if station.title == "" then
-    	station.title =  "Clone Bank"
-        InteractionText(station.index).text = Dialog.generateStationInteractionText(station, random())
+        station.title =  "Clone Bank"
+        InteractionText(station.index).text = generateStationInteractionText(station, random())
     end
 
     if onClient() and EntityIcon().icon == "" then
         EntityIcon().icon = "data/textures/icons/pixel/research.png"
-        InteractionText(station.index).text = Dialog.generateStationInteractionText(station, random())
+        InteractionText(station.index).text = generateStationInteractionText(station, random())
     end
 
 end
@@ -79,7 +97,7 @@ function initUI()
 
     menu:registerInteraction("Create Clone"%_t, "onCreateClone")
 end
-
+--[[
 -- this functions gets called when the indicator of the station is rendered on the client
 -- if you want to do any rendering calls by yourself, then this is the place to do it. Just remember that this
 -- may take up a lot of performance and might slow the game down, so don't overuse it.
@@ -117,33 +135,90 @@ end
 -- may take up a lot of performance and might slow the game down, so don't overuse it.
 function renderUI()
 
-end
+end--]]
 
 function onCreateClone()
-	--gets called when you click the "set homeworld" button.
-	renderToggle = false --Make the UI not render so it won't obstruct the screen (if you know a better way, please do tell me!)
-	local x, y = Sector():getCoordinates() 
-	Player():getHomeSectorCoordinates() -- for later.
-	local flag, msg = not CheckFactionInteraction(Player().index, 50000)
+    --gets called when you click the "set homeworld" button.
+    renderToggle = false --Make the UI not render so it won't obstruct the screen (if you know a better way, please do tell me!)
+    local flag, msg = CheckFactionInteraction(Player().index, balanceFactors.relationThreshold)
+    local dialog = {text = "error"}
+    if flag then
+        dialog.text = "We value your service to the Federation. As a token of gratitude, this clone is on us."
+    elseif Player:canPay(balanceFactors.price) then
+        Player:payMoney(balanceFactors.price)
+        invokeServerFunction("setCloneHome",Player().index,x,y)
+        dialog.text = "Your clone is safe with us, " .. Player().name ..". Please remember, only one clone can be active at a time."
+    else
+        dialog.text = "I'm sorry " .. Player().name .. ", but it seems like you don't quite have enough credits and we don't do charity cases." 
+    end
 
-	local dialog = {text = "error"}
-	if(flag) then
-		dialog.text = "Sorry, but we do not know you well enough to let you base near us."
-	else
-		invokeServerFunction("setCloneHome",Player().index,x,y)
-		print(Player().index)
-		print(Player())
-		dialog.text = "We'll be happy to have you around, " .. Player().name ..". Please remember, only one clone can be active at a time."	
-	end
-
-	ScriptUI():showDialog(dialog)	
+    ScriptUI():showDialog(dialog)   
 end
 
-
-
 function setCloneHome(playerindex,x,y)
-	local player = Player(playerindex)
-	player:setHomeSectorCoordinates(x,y)
-	print(playerindex)
-	--print("Changed player ".. playerindex .. "'s homeworld to: " .. player:getHomeSectorCoordinates() )
+    local player = Player(playerindex)
+    player:setHomeSectorCoordinates(x,y)
+    --print("Changed player ".. playerindex .. "'s homeworld to: " .. player:getHomeSectorCoordinates() )
+end
+
+function generateStationInteractionText(entity, random)
+
+    local text = ""
+
+    local title = entity.translatedTitle
+    local name = entity.name
+
+    local nameStr = " of this "%_t .. title
+
+    local greetings = {
+        "Hello. "%_t,
+        "Welcome. "%_t,
+        "Greetings. "%_t,
+        "Good day. "%_t,
+    }
+
+    local intro1 = {
+        "This is "%_t,
+        "You are talking to "%_t,
+        "You are now talking to "%_t,
+        "You are speaking to "%_t,
+        "You are now speaking to "%_t,
+    }
+
+    local intro2 = {
+        "the manager and operator${name_string}. "%_t % {name_string = nameStr},
+        "the lead engineer${name_string}. "%_t % {name_string = nameStr},
+    }
+
+    local service = {
+        "Would you like to purchase a clone? Safety first!"%_t,
+        "The best cure for Xsotans is a clone in every sector?"%_t,
+        "For a small price, you can shoot whoever you want with no repurcussions!"%_t,
+    }
+
+    local price_str = " The clone will only cost ${money} credits."%_t % {money = balanceFactors.price}
+    local str =
+        greetings[random:getInt(1, #greetings)] ..
+        intro1[random:getInt(1, #intro1)] ..
+        intro2[random:getInt(1, #intro2)] ..
+        service[random:getInt(1, #service)] ..
+        price_str
+
+    return str
+end
+
+function setPrice(richness)
+    -- Organic, grass fed and free roam credits only.
+    local wholeValuePrice = math.floor(50000*richness)
+    -- price increments by 5000 rounded up. If you don't do this you get some pretty funky numbers.
+    local leftOver = wholeValuePrice % 5000
+    local price = wholeValuePrice + (5000-leftOver)
+    print("wholeValuePrice " .. wholeValuePrice)
+    print("leftOver " .. leftOver)
+    print("price " .. price)
+    balanceFactors.price = price
+end
+
+function setRelationThreshold(linearFactor)
+    balanceFactors.relationThreshold = 100000*linearFactor + 25000 -- minimum required relationship is 25000
 end
