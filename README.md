@@ -1,5 +1,5 @@
 # RespawnClone
-#><hr>
+<hr>
 # Table of Contents
 
 * [Team Members](#team-members)
