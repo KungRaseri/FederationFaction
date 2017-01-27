@@ -42,7 +42,6 @@ end
 function onPlayerLogIn(playerIndex)
     local player = Player(playerIndex)
     Server():broadcastChatMessage("Server", 0, "Player %s joined the galaxy"%_t, player.name)
-    Server():broadcastChatMessage("Server", 0, Server():getValue("federation") .. " wow. Federation index.")
     player:addScriptOnce("headhunter.lua")
     player:addScriptOnce("eventscheduler.lua")
     player:addScriptOnce("story/spawnswoks.lua")

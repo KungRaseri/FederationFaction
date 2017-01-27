@@ -94,7 +94,6 @@ end
 -- create all required UI elements for the client side
 function initUI()
     local menu = ScriptUI()
-
     menu:registerInteraction("Create Clone"%_t, "onCreateClone")
 end
 --[[
@@ -138,20 +137,20 @@ function renderUI()
 end--]]
 
 function onCreateClone()
-    --gets called when you click the "set homeworld" button.
+    --gets called when you click the "Create Clone" button.
     renderToggle = false --Make the UI not render so it won't obstruct the screen (if you know a better way, please do tell me!)
     local flag, msg = CheckFactionInteraction(Player().index, balanceFactors.relationThreshold)
     local dialog = {text = "error"}
     if flag then
         dialog.text = "We value your service to the Federation. As a token of gratitude, this clone is on us."
-    elseif Player:canPay(balanceFactors.price) then
+        invokeServerFunction("setCloneHome",Player().index,x,y)
+    elseif Player():canPay(balanceFactors.price) then
         Player:payMoney(balanceFactors.price)
         invokeServerFunction("setCloneHome",Player().index,x,y)
         dialog.text = "Your clone is safe with us, " .. Player().name ..". Please remember, only one clone can be active at a time."
     else
-        dialog.text = "I'm sorry " .. Player().name .. ", but it seems like you don't quite have enough credits and we don't do charity cases." 
+        dialog.text = "We don't do charity cases. Come back when you have more credits." 
     end
-
     ScriptUI():showDialog(dialog)   
 end
 
@@ -213,9 +212,6 @@ function setPrice(richness)
     -- price increments by 5000 rounded up. If you don't do this you get some pretty funky numbers.
     local leftOver = wholeValuePrice % 5000
     local price = wholeValuePrice + (5000-leftOver)
-    print("wholeValuePrice " .. wholeValuePrice)
-    print("leftOver " .. leftOver)
-    print("price " .. price)
     balanceFactors.price = price
 end
 
