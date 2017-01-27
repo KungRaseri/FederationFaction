@@ -114,8 +114,8 @@ function createFederation(seed)
     faction:setTrait("mistrustful"%_T, .5)
     faction:setTrait("naive"%_T, -.5)
 
-    faction:setTrait("sadistic"%_T, .5)
-    faction:setTrait("empathic"%_T, -.5)
+    faction:setTrait("sadistic"%_T, -.5)
+    faction:setTrait("empathic"%_T, .5)
 
     faction:setTrait("forgiving"%_T, -.75)
     faction:setTrait("strict"%_T, .75)
