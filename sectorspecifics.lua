@@ -378,7 +378,7 @@ function SectorSpecifics.getRegularStationSectors()
     destinations["sectors/midfactories"] = true
     destinations["sectors/highfactories"] = true
     destinations["sectors/miningfield"] = true
-
+    destinations["mods/cloneSector"] = true
     return destinations
 end
 

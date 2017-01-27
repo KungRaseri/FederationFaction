@@ -129,6 +129,8 @@ function SectorTemplate.generate(player, seed, x, y)
         end
     end
 
+    generator:createStation(faction, "data/scripts/mods/entity/merchants/cloneBank.lua")
+
     if SectorTemplate.gates(x, y) then generator:createGates() end
 
     if math.random() < generator:getWormHoleProbability() then generator:createRandomWormHole() end
