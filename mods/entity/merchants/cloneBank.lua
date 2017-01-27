@@ -23,6 +23,10 @@ require ("randomext")
 Dialog = require("dialogutility")
 
 local balanceFactors = {}
+local interacted
+local paymentSuccessful
+local paymentRequired
+
 -- if this function returns true the button for the script in the interaction window will be clickable.
 -- If this function returns false, it can return an error message as well, which will explain why the interaction doesn't work.
 function interactionPossible(playerIndex, option)
@@ -118,13 +122,28 @@ end
 function update(timeStep)
 
 end
+--]]
 
 -- this function gets called once each frame, on client only
-function updateClient(timeStep)
+function updateClient()
+    if not interacted then
+        if paymentRequired == nil or paymentSuccessful == nil then
+            return
+        end
+        if paymentSuccessful == 0 and paymentRequired == 1 then
+            ScriptUI():interactShowDialog(payFailedDialog(), 0)
+        elseif paymentSuccessful == 1 and paymentRequired == 1 then
+            ScriptUI():interactShowDialog(paySuccessfulDialog(), 0)
+        elseif paymentSuccessful == 0 and paymentRequired == 0 then
+            ScriptUI():interactShowDialog(payNotRequiredDialog(), 0)
+        end
 
+        interacted = true
+    end
 end
 
 -- this function gets called once each frame, on server only
+--[[
 function updateServer(timeStep)
 
 end
@@ -137,27 +156,29 @@ function renderUI()
 end--]]
 
 function onCreateClone()
-    --gets called when you click the "Create Clone" button.
-    renderToggle = false --Make the UI not render so it won't obstruct the screen (if you know a better way, please do tell me!)
-    local flag, msg = CheckFactionInteraction(Player().index, balanceFactors.relationThreshold)
-    local dialog = {text = "error"}
-    if flag then
-        dialog.text = "We value your service to the Federation. As a token of gratitude, this clone is on us."
-        invokeServerFunction("setCloneHome",Player().index,x,y)
-    elseif Player():canPay(balanceFactors.price) then
-        Player:payMoney(balanceFactors.price)
-        invokeServerFunction("setCloneHome",Player().index,x,y)
-        dialog.text = "Your clone is safe with us, " .. Player().name ..". Please remember, only one clone can be active at a time."
-    else
-        dialog.text = "We don't do charity cases. Come back when you have more credits." 
+    -- gets called when you click the "Create Clone" button.
+    -- we need the server player object so reinvoke on the server.
+    if onClient() then
+        invokeServerFunction("onCreateClone")
+        return
     end
-    ScriptUI():showDialog(dialog)   
-end
+    
+    local x, y = Sector():getCoordinates()
+    local player = Player(callingPlayer)
 
-function setCloneHome(playerindex,x,y)
-    local player = Player(playerindex)
-    player:setHomeSectorCoordinates(x,y)
-    --print("Changed player ".. playerindex .. "'s homeworld to: " .. player:getHomeSectorCoordinates() )
+    local flag, msg = CheckFactionInteraction(player.index, balanceFactors.relationThreshold)
+    local canPay, msg, args = player:canPay(balanceFactors.price)
+
+    if flag then
+        player:setHomeSectorCoordinates(x,y)
+        invokeClientFunction(player, "payNotRequired")
+    elseif canPay then
+        player:payMoney(balanceFactors.price)
+        player:setHomeSectorCoordinates(x,y)
+        invokeClientFunction(player, "paySuccessful")
+    else
+        invokeClientFunction(player, "payFailed")
+    end
 end
 
 function generateStationInteractionText(entity, random)
@@ -209,12 +230,47 @@ end
 function setPrice(richness)
     -- Organic, grass fed and free roam credits only.
     local wholeValuePrice = math.floor(50000*richness)
-    -- price increments by 5000 rounded up. If you don't do this you get some pretty funky numbers.
+    -- price increments by 5000 rounded up. If you don't do this you get some pretty funky numbers. e.g 673641
     local leftOver = wholeValuePrice % 5000
     local price = wholeValuePrice + (5000-leftOver)
     balanceFactors.price = price
 end
 
 function setRelationThreshold(linearFactor)
-    balanceFactors.relationThreshold = 100000*linearFactor + 25000 -- minimum required relationship is 25000
+    -- minimum required relationship is 25000
+    -- In the future, we should make this a configuration value
+    balanceFactors.relationThreshold = 100000*linearFactor + 25000 
+end
+
+function paySuccessful()
+    paymentRequired = 1
+    paymentSuccessful = 1
+    interacted = nil
+end
+
+function payFailed()
+    paymentRequired = 1
+    paymentSuccessful = 0
+    interacted = nil
+end
+
+function payNotRequired()
+    paymentRequired = 0
+    paymentSuccessful = 0
+    interacted = nil
+end
+
+function paySuccessfulDialog()
+    local dialog = {text = "Your clone is safe with us, " .. Player().name ..". Please remember, only one clone can be active at a time."}
+    return dialog
+end
+
+function payFailedDialog()
+    local dialog = {text = "We don't do charity cases. Come back when you have more credits."}
+    return dialog
+end
+
+function payNotRequiredDialog()
+    local dialog = {text = "We value your service to the Federation. As a token of gratitude, this clone is on us."}
+    return dialog
 end
