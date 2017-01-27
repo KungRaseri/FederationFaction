@@ -6,7 +6,8 @@
 * [Project Description](#project-description)
 
 # <a name="team-members"></a>Team Members
-* "J. Jesus. P. Aguinaga" <admin@listforks.com>
+* "Adam Homer" <adamhomer88@gmail.com>
+* "Josh Homer" <countjoshington@gmail.com>
 
 #<a name="project-description"></a>Project Description
 * Description
